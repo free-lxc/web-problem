@@ -1,227 +1,124 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import TaskProcessor from './components/TaskProcessor.vue';
+import ColorMatrixGenerator from './components/ColorMatrixGenerator.vue';
 
-// 定义五种颜色
-const colors = [
-  { name: '红色', value: '#FF0000' },
-  { name: '绿色', value: '#00FF00' },
-  { name: '蓝色', value: '#0000FF' },
-  { name: '黄色', value: '#FFFF00' },
-  { name: '橙色', value: '#FFA500' }
-];
+// 功能切换状态
+const activeFeature = ref<'matrix' | 'task'>('matrix');
 
-// 定义输入参数的默认值
-const xValue = ref<number>(10);
-const yValue = ref<number>(10);
-const zValue = ref<number>(20);
-
-// 定义矩阵数据
-const matrix = ref<Array<Array<{ name: string; value: string }>>>([]);
-
-// 生成随机颜色矩阵
-function generateMatrix() {
-  const newMatrix: Array<Array<{ name: string; value: string }>> = [];
-
-  for (let m = 0; m < 10; m++) {
-    newMatrix[m] = [];
-    for (let n = 0; n < 10; n++) {
-      if (m === 0 && n === 0) {
-        // (0,0) 点随机选择颜色
-        const randomIndex = Math.floor(Math.random() * colors.length);
-        newMatrix[m][n] = colors[randomIndex];
-      } else {
-        // 计算其他点的颜色
-        let probabilities = [...Array(colors.length)].map(() => 1 / 5); // 基准概率 1/5
-
-        // 获取上方点 (m-1, n) 和左方点 (m, n-1)
-        const topColor = m > 0 ? newMatrix[m-1][n] : null;
-        const leftColor = n > 0 ? newMatrix[m][n-1] : null;
-
-        // 应用概率规则
-        if (topColor) {
-          const topIndex = colors.findIndex(color => color.value === topColor.value);
-          probabilities[topIndex] += xValue.value / 100;
-        }
-
-        if (leftColor) {
-          const leftIndex = colors.findIndex(color => color.value === leftColor.value);
-          probabilities[leftIndex] += yValue.value / 100;
-        }
-
-        // 如果上方点和左方点颜色相同，增加该颜色的概率
-        if (topColor && leftColor && topColor.value === leftColor.value) {
-          const sameIndex = colors.findIndex(color => color.value === topColor.value);
-          probabilities[sameIndex] += zValue.value / 100;
-        }
-
-        // 归一化概率
-        const sum = probabilities.reduce((acc, prob) => acc + prob, 0);
-        const normalizedProbabilities = probabilities.map(prob => prob / sum);
-
-        // 根据概率选择颜色
-        let random = Math.random();
-        let selectedIndex = 0;
-        while (random > normalizedProbabilities[selectedIndex]) {
-          random -= normalizedProbabilities[selectedIndex];
-          selectedIndex++;
-        }
-
-        newMatrix[m][n] = colors[selectedIndex];
-      }
-    }
-  }
-
-  matrix.value = newMatrix;
+// 切换功能
+function toggleFeature() {
+  activeFeature.value = activeFeature.value === 'matrix' ? 'task' : 'matrix';
 }
-
-// 初始生成矩阵
-generateMatrix();
 </script>
 
 <template>
-  <div class="container">
-    <h1>随机颜色矩阵生成器</h1>
-    <p class="description">本程序生成一个10×10的随机颜色矩阵，颜色选择基于概率规则。</p>
+  <div class="app-container">
+    <header class="header">
+      <h1>功能展示平台</h1>
+    </header>
 
-    <div class="color-palette">
-      <span class="color-label">颜色:</span>
-      <div v-for="color in colors" :key="color.name" class="color-swatch" :style="{ backgroundColor: color.value }" :title="color.name"></div>
+    <div class="feature-toggle">
+      <button
+        class="toggle-btn" 
+        :class="{ 'active': activeFeature === 'matrix' }"
+        @click="toggleFeature"
+      >
+        随机颜色矩阵生成器
+      </button>
+      <button
+        class="toggle-btn"
+        :class="{ 'active': activeFeature === 'task' }"
+        @click="toggleFeature"
+      >
+        异步任务处理器
+      </button>
     </div>
 
-    <div class="controls">
-      <div class="input-group">
-        <label for="xValue">X值 (%):</label>
-        <input type="number" id="xValue" v-model.number="xValue" min="0" max="100">
+    <main class="main-content">
+      <div class="feature-container">
+        <ColorMatrixGenerator v-if="activeFeature === 'matrix'" />
+        <TaskProcessor v-else />
       </div>
-      <div class="input-group">
-        <label for="yValue">Y值 (%):</label>
-        <input type="number" id="yValue" v-model.number="yValue" min="0" max="100">
-      </div>
-      <div class="input-group">
-        <label for="zValue">Z值 (%):</label>
-        <input type="number" id="zValue" v-model.number="zValue" min="0" max="100">
-      </div>
-      <button class="generate-btn" @click="generateMatrix">生成矩阵</button>
-    </div>
-
-    <div class="matrix-container">
-      <div class="matrix">
-        <div v-for="(row, m) in matrix" :key="m" class="matrix-row">
-          <div v-for="(cell, n) in row" :key="n" class="matrix-cell" :style="{ backgroundColor: cell.value }" :title="`(${m},${n}): ${cell.name}`"></div>
-        </div>
-      </div>
-    </div>
+    </main>
   </div>
-
-  <!-- 异步任务处理器部分 -->
-  <TaskProcessor />
 </template>
 
 <style scoped>
-.container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
   font-family: Arial, sans-serif;
+  background-color: #f5f5f5;
 }
 
-h1 {
-  text-align: center;
-  color: #333;
-}
-
-.description {
-  text-align: center;
-  color: #666;
-  margin-bottom: 20px;
-}
-
-.color-palette {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-
-.color-label {
-  margin-right: 10px;
-  color: #333;
-}
-
-.color-swatch {
-  width: 30px;
-  height: 30px;
-  margin: 0 5px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 15px;
-  margin-bottom: 30px;
-}
-
-.input-group {
+.app-container {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-.input-group label {
-  margin-bottom: 5px;
-  color: #333;
-  font-size: 14px;
-}
-
-.input-group input {
-  width: 80px;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+.header {
+  background-color: #42b983;
+  color: white;
+  padding: 20px;
   text-align: center;
 }
 
-.generate-btn {
-  align-self: flex-end;
-  padding: 8px 20px;
-  background-color: #4CAF50;
-  color: white;
+.header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.feature-toggle {
+  display: flex;
+  justify-content: center;
+  padding: 15px;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-btn {
+  padding: 10px 20px;
+  margin: 0 10px;
+  background-color: #eee;
+  color: #333;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 16px;
-  transition: background-color 0.3s;
+  font-size: 14px;
+  transition: all 0.3s ease;
 }
 
-.generate-btn:hover {
-  background-color: #45a049;
+.toggle-btn:hover {
+  background-color: #ddd;
 }
 
-.matrix-container {
+.toggle-btn.active {
+  background-color: #42b983;
+  color: white;
+}
+
+.main-content {
+  flex: 1;
   display: flex;
   justify-content: center;
-  margin-top: 30px;
+  align-items: center;
+  padding: 20px;
 }
 
-.matrix {
-  display: inline-block;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+.feature-container {
+  width: 100%;
+  max-width: 900px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-}
-
-.matrix-row {
-  display: flex;
-}
-
-.matrix-cell {
-  width: 30px;
-  height: 30px;
-  border: 0.5px solid rgba(0, 0, 0, 0.1);
-  box-sizing: border-box;
+  padding: 20px;
+  margin: 20px auto;
 }
 </style>
